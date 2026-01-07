@@ -1,0 +1,5 @@
+[core]
+    remote = dvc-s3
+['remote "dvc-s3"']
+    url = s3://khai-bucket-s3-mlflow/dvc-store
+    endpointurl = https://s3.amazonaws.com
