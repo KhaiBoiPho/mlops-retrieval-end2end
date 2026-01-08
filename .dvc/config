@@ -1,5 +1,5 @@
 [core]
-    remote = dvc-s3
-['remote "dvc-s3"']
-    url = s3://khai-bucket-s3-mlflow/dvc-store
+    remote = myremote
+['remote "myremote"']
+    url = s3://khai-bucket-s3-mlflow/dvc-storage
     region = ap-southeast-1
