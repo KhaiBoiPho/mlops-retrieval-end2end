@@ -1,0 +1,30 @@
+# MLflow model loading
+model:
+  mlflow_tracking_uri: "http://127.0.0.1:5000"
+  mlflow_model_name: "cross-encoder-legal-retrieval"
+  mlflow_model_stage: "latest"  # or "Production", "1", etc.
+  mlflow_run_id: null  # Optional: load from specific run
+
+# Corpus (optional - for looking up full text)
+corpus:
+  path: "data/use/corpus_tokenized.csv"
+
+# Server configuration
+server:
+  host: "0.0.0.0"
+  port: 8001
+  workers: 4
+  reload: false
+
+# Inference settings
+inference:
+  batch_size: 16  # Smaller than bi-encoder
+  max_seq_length: 512  # Longer (query + document)
+  device: "cuda"  # cuda/cpu
+  top_n: 10  # Final results after reranking
+
+# Cache settings (optional)
+cache:
+  enable: true
+  ttl: 3600  # 1 hour
+  max_size: 5000

@@ -1,0 +1,21 @@
+# no finish
+prometheus:
+  port: 9090
+  metrics_path: "/metrics"
+
+grafana:
+  url: "http://localhost:3000"
+  dashboard_refresh_interval: 30  # seconds
+
+alerts:
+  rules_path: "monitoring/prometheus/rules.yml"
+  
+  slack:
+    enable: false
+    webhook_url: ""
+
+drift_detection:
+  enable: true
+  check_interval: 3600  # 1 hour
+  embedding_drift_threshold: 0.1
+  performance_drop_threshold: 0.05

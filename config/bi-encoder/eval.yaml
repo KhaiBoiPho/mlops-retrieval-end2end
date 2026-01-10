@@ -1,0 +1,38 @@
+# Model loading from MLflow
+model:
+  mlflow:
+    tracking_uri: "http://127.0.0.1:5000"
+    experiment_name: "bi-encoder-evaluation"
+    model_stage: "latest"  # or "Production", "Staging", version number
+  mlflow_model_name: "bi-encoder"
+  run_id: null  # Optional
+
+# Data paths
+data:
+  test_path: "data/use/test_local.csv"
+  corpus_path: "data/use/corpus_tokenized.csv"
+  corpus_embeddings_path: "artifacts/corpus_embeddings/corpus_embeddings.pt"  # Cần có!
+  corpus_ids_path: "data/processed/corpus_ids.npy"  # Cần có!
+
+metrics:
+  recall_k_values: [1, 3, 5]
+  precision_k_values: [1, 3, 5]
+  ndcg_k_values: [1, 3, 5]
+  compute_mrr: true
+  compute_map: true
+  compute_hit_rate: true
+
+processing:
+  batch_size: 128  # Larger for bi-encoder
+  max_seq_length: 128
+  device: "cuda"
+
+# Output paths
+output:
+  results_dir: "reports/bi-encoder"
+  save_predictions: true
+  save_failed_cases: true
+  save_rankings: true
+  metrics_file: "metrics.json"
+  predictions_file: "predictions.csv"
+  failed_cases_file: "failed_cases.csv"

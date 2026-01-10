@@ -1,0 +1,61 @@
+model:
+  name: "sentence-transformers/all-MiniLM-L6-v2"
+  # name: "bkai-foundation-models/vietnamese-bi-encoder"
+  pooling: "mean"  # mean, cls
+  normalize: true
+
+# Output paths - DVC track
+output_dir: "artifacts/bi-encoder"
+logging_dir: "logs/bi-encoder"
+
+# Data paths - DVC-managed
+data:
+  train_path: "data/use/train_split.csv"
+  val_path: "data/use/val_split.csv"
+
+training_params:
+  num_epochs: 1
+  batch_size: 32
+  learning_rate: 2e-5
+  warmup_ratio: 0.1
+  weight_decay: 0.01
+  max_seq_length: 256
+  
+  loss:
+    type: "MultipleNegativesRankingLoss"
+    params:
+      scale: 20.0
+      cache_size: 1024
+  
+  use_fp16: true
+  
+  # Checkpointing
+  save_strategy: "epoch"
+  save_steps: 500
+  save_total_limit: 2
+  
+  # Evaluation
+  eval_strategy: "epoch"
+  eval_steps: 500
+  metric_for_best_model: "eval_loss"
+  load_best_model_at_end: true
+
+  # Cleanup config
+  cleanup_checkpoints: false  # Keep all local checkpoints or delete intermediate checkpoints after training
+
+mlflow:
+  tracking_uri: "http://127.0.0.1:5000"
+  experiment_name: "bi-encoder-training"
+  register_model: true  # Auto-register to Model Registry
+  registry_name: "bi-encoder"
+
+# S3 backup configuration (only for best model)
+s3:
+  enabled: true
+  bucket: "khai-bucket-s3-mlflow"
+  prefix: "models/bi-encoder"  # s3://bucket/models/bi-encoder/{run_id}/
+  region: "ap-southeast-1"
+  upload_all: true
+  upload_strategy: "incremental" # 'incremental' or 'final'
+  # incremental: upload after each checkpoint save
+  # final: upload all at once after training completes

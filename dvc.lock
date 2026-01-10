@@ -1,0 +1,202 @@
+schema: '2.0'
+stages:
+  download_raw:
+    cmd: python src/data/pipeline.py download_raw
+    params:
+      config/data.yaml:
+        s3:
+          bucket: khai-bucket-s3-mlflow
+          region: ap-southeast-1
+          raw_data:
+            corpus_key: raw/corpus.csv
+            train_key: raw/train.csv
+    outs:
+    - path: data/raw/corpus.csv
+      hash: md5
+      md5: 9f41ae110081a52c47462b8fd46002e5
+      size: 381017567
+    - path: data/raw/train.csv
+      hash: md5
+      md5: 1ca7f90bef23e224cff4091d5e51522f
+      size: 184792119
+  preprocess:
+    cmd: python src/data/pipeline.py preprocess
+    deps:
+    - path: data/raw/corpus.csv
+      hash: md5
+      md5: 9f41ae110081a52c47462b8fd46002e5
+      size: 381017567
+    - path: data/raw/train.csv
+      hash: md5
+      md5: 1ca7f90bef23e224cff4091d5e51522f
+      size: 184792119
+    - path: src/data/processors.py
+      hash: md5
+      md5: 9629623fd54966ebddaf76fb4610aaf6
+      size: 9224
+    params:
+      config/data.yaml:
+        preprocessing:
+          remove_duplicates: true
+          min_text_length: 10
+          max_text_length: 5000
+    outs:
+    - path: data/processed/corpus_cleaned.csv
+      hash: md5
+      md5: 9f41ae110081a52c47462b8fd46002e5
+      size: 381017567
+    - path: data/processed/train_cleaned.csv
+      hash: md5
+      md5: e9b004cced09a9ddacc809a4d5c62051
+      size: 158015475
+  tokenize:
+    cmd: python src/data/pipeline.py tokenize
+    deps:
+    - path: data/processed/corpus_cleaned.csv
+      hash: md5
+      md5: 9f41ae110081a52c47462b8fd46002e5
+      size: 381017567
+    - path: data/processed/train_cleaned.csv
+      hash: md5
+      md5: e9b004cced09a9ddacc809a4d5c62051
+      size: 158015475
+    - path: src/data/processors.py
+      hash: md5
+      md5: 9629623fd54966ebddaf76fb4610aaf6
+      size: 9224
+    params:
+      config/data.yaml:
+        tokenization:
+          n_jobs: -1
+          batch_size: 100
+    outs:
+    - path: data/use/corpus_tokenized.csv
+      hash: md5
+      md5: cd63129947a40425155eb1651cb30f69
+      size: 392462200
+    - path: data/use/train_tokenized.csv
+      hash: md5
+      md5: fef20e4d83a602eecf25fe259f824645
+      size: 162412900
+  split_data:
+    cmd: python src/data/pipeline.py split_data
+    deps:
+    - path: data/use/train_tokenized.csv
+      hash: md5
+      md5: fef20e4d83a602eecf25fe259f824645
+      size: 162412900
+    - path: src/data/processors.py
+      hash: md5
+      md5: 9629623fd54966ebddaf76fb4610aaf6
+      size: 9224
+    params:
+      config/data.yaml:
+        split:
+          train_size: 0.7
+          val_size: 0.2
+          test_size: 0.1
+          random_state: 42
+    outs:
+    - path: data/use/test_split.csv
+      hash: md5
+      md5: d5b1d3b74672c1d6f9aaac9ac22fd22d
+      size: 16226760
+    - path: data/use/train_split.csv
+      hash: md5
+      md5: e4e7f83dd701b7bfcaf374e7bed4a5f7
+      size: 113681276
+    - path: data/use/val_split.csv
+      hash: md5
+      md5: 659f0af797d8cfd6c0410986a09b8438
+      size: 32504914
+  validate:
+    cmd: python src/data/pipeline.py validate
+    deps:
+    - path: data/use/corpus_tokenized.csv
+      hash: md5
+      md5: cd63129947a40425155eb1651cb30f69
+      size: 392462200
+    - path: data/use/test_split.csv
+      hash: md5
+      md5: d5b1d3b74672c1d6f9aaac9ac22fd22d
+      size: 16226760
+    - path: data/use/train_split.csv
+      hash: md5
+      md5: e4e7f83dd701b7bfcaf374e7bed4a5f7
+      size: 113681276
+    - path: data/use/val_split.csv
+      hash: md5
+      md5: 659f0af797d8cfd6c0410986a09b8438
+      size: 32504914
+    - path: src/data/processors.py
+      hash: md5
+      md5: 9629623fd54966ebddaf76fb4610aaf6
+      size: 9224
+    outs:
+    - path: reports/validation_metrics.json
+      hash: md5
+      md5: 729ed89751c54fdcb321bcd9a12841d6
+      size: 113
+  train_bi_encoder:
+    cmd: python src/models/bi_encoder/train.py
+    deps:
+    - path: data/use/train_split.csv
+      hash: md5
+      md5: e4e7f83dd701b7bfcaf374e7bed4a5f7
+      size: 113681276
+    - path: data/use/val_split.csv
+      hash: md5
+      md5: 659f0af797d8cfd6c0410986a09b8438
+      size: 32504914
+    - path: src/models/bi_encoder/loss.py
+      hash: md5
+      md5: 28b22e5a511be50a28deef6355f93cfd
+      size: 3603
+    - path: src/models/bi_encoder/model.py
+      hash: md5
+      md5: f1b9128292ce55854e9378be04909f35
+      size: 2323
+    - path: src/models/bi_encoder/train.py
+      hash: md5
+      md5: e8a64e0bb9e8b3f2480352529b7eaa77
+      size: 4479
+    - path: src/train/bi_encoder/dataset.py
+      hash: md5
+      md5: 9ecc01c4bdc72435c71822ec876506f4
+      size: 6826
+    - path: src/train/bi_encoder/trainer.py
+      hash: md5
+      md5: 29f4a48528ca8dc229ece873b75a38d3
+      size: 22718
+    params:
+      config/bi-encoder/train.yaml:
+        model:
+          name: sentence-transformers/all-MiniLM-L6-v2
+          pooling: mean
+          normalize: true
+        training_params:
+          num_epochs: 1
+          batch_size: 32
+          learning_rate: 2e-05
+          warmup_ratio: 0.1
+          weight_decay: 0.01
+          max_seq_length: 256
+          loss:
+            type: MultipleNegativesRankingLoss
+            params:
+              scale: 20.0
+              cache_size: 1024
+          use_fp16: true
+          save_strategy: epoch
+          save_steps: 500
+          save_total_limit: 2
+          eval_strategy: epoch
+          eval_steps: 500
+          metric_for_best_model: eval_loss
+          load_best_model_at_end: true
+          cleanup_checkpoints: false
+    outs:
+    - path: reports/bi-encoder/train_metrics.json
+      hash: md5
+      md5: e9834bb77b5d576405586fb0d5749394
+      size: 167

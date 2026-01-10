@@ -1,0 +1,30 @@
+mlflow:
+  tracking_uri: "http://127.0.0.1:5000"
+  model_name: "bi-encoder"
+  model_stage: "latest"
+  run_id: null
+
+corpus:
+  embeddings_path: "artifacts/corpus_embeddings/corpus_embeddings.pt"
+  ids_path: "artifacts/corpus_embeddings/corpus_ids.pkl"
+  data_path: "data/use/corpus_tokenized.csv"
+
+# Data paths - DVC-managed
+data:
+  train_path: "data/use/train_split.csv"
+  val_path: "data/use/val_split.csv"
+  
+  # Output paths
+  output_dir: "data/use"
+  train_output_file: "train_with_hard_negatives.csv"
+  val_output_file: "val_with_hard_negatives.csv"
+
+mining:
+  top_k_candidates: 50
+  num_negatives_per_query: 10
+  min_score_threshold: 0.3
+  max_score_threshold: 0.9
+  batch_size: 64
+  max_seq_length: 256
+  device: "cuda"
+  show_progress: true

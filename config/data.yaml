@@ -1,0 +1,31 @@
+s3:
+  bucket: "khai-bucket-s3-mlflow"
+  region: "ap-southeast-1"
+  
+  raw_data:
+    corpus_key: "raw/corpus.csv"
+    train_key: "raw/train.csv"
+
+# Local paths - DVC-managed
+local:
+  raw_data_dir: "data/raw"
+  processed_data_dir: "data/processed"  
+  use_data_dir: "data/use"
+  
+# Preprocessing parameters
+preprocessing:
+  remove_duplicates: true
+  min_text_length: 10
+  max_text_length: 5000
+
+# Data split ratios
+split:
+  train_size: 0.7
+  val_size: 0.2
+  test_size: 0.1
+  random_state: 42
+
+# Tokenization
+tokenization:
+  n_jobs: -1  # Use all CPU cores
+  batch_size: 100

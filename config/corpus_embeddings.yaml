@@ -1,0 +1,24 @@
+mlflow:
+  tracking_uri: "http://127.0.0.1:5000"
+  model_name: "bi-encoder"
+  model_stage: "latest"
+  run_id: null
+
+# Data paths - DVC-managed
+data:
+  corpus_path: "data/use/corpus_tokenized.csv"
+  output_dir: "artifacts/corpus_embeddings"
+  embeddings_file: "corpus_embeddings.pt"
+  ids_file: "corpus_ids.pkl"
+
+processing:
+  batch_size: 64
+  max_seq_length: 256
+  device: "cuda"  # cuda/cpu
+  show_progress: true
+
+# S3 (optional)
+s3:
+  enabled: true
+  bucket: "khai-bucket-s3-mlflow"
+  key: "embeddings/corpus_embeddings.pt"

@@ -1,0 +1,35 @@
+# Model loading from MLflow
+model:
+  mlflow_model_name: "cross-encoder"
+  mlflow_model_stage: "latest"  # or specific version like "1", "Production"
+  mlflow_run_id: null  # Optional: load from specific run
+
+# Data paths - DVC-managed
+data:
+  test_path: "data/use/test_with_hard_negatives.csv"
+  corpus_path: "data/use/corpus_tokenized.csv"
+  candidates_path: null
+  top_k_candidates: 100
+
+metrics:
+  threshold: 0.5
+  compute_auc: true
+  compute_confusion_matrix: true
+
+processing:
+  batch_size: 32
+  max_seq_length: 512
+  device: "cuda"
+
+# Output paths
+output:
+  results_dir: "reports/cross-encoder"
+  save_predictions: true
+  save_failed_cases: true
+  metrics_file: "metrics.json"
+  predictions_file: "predictions.csv"
+  failed_cases_file: "failed_cases.csv"
+
+mlflow:
+  tracking_uri: "http://127.0.0.1:5000"
+  experiment_name: "cross-encoder-evaluation"

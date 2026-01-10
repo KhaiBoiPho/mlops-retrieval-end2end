@@ -1,0 +1,47 @@
+model:
+  name: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+  num_labels: 1
+
+data:
+  train_path: "data/use/train_with_hard_negatives.csv"
+  val_path: "data/use/val_with_hard_negatives.csv"
+  corpus_path: "data/use/corpus_tokenized.csv"
+  max_samples: 100  # Test với ít data
+
+training_params:
+  num_epochs: 3
+  batch_size: 16
+  learning_rate: 2e-5
+  warmup_ratio: 0.1
+  weight_decay: 0.01
+  max_seq_length: 512
+  loss_type: "BCEWithLogitsLoss"
+  use_fp16: true
+  save_strategy: "steps"
+  save_steps: 500
+  save_total_limit: 2
+  eval_strategy: "steps"
+  eval_steps: 500
+  metric_for_best_model: "eval_loss"
+  load_best_model_at_end: true
+
+output_dir: "artifacts/cross-encoder"
+logging_dir: "logs/cross-encoder"
+
+mlflow:
+  tracking_uri: "http://127.0.0.1:5000"
+  experiment_name: "cross-encoder-training"
+
+# ✅ Copy từ bi-encoder config
+s3:
+  enabled: true
+  bucket: "khai-bucket-s3-mlflow"  # Same bucket
+  prefix: "models/cross-encoder"   # Different prefix
+  region: "ap-southeast-1"
+  upload_all: true
+  upload_strategy: "incremental"   # hoặc "final"
+
+# ✅ Model registry
+registry:
+  enabled: true
+  model_name: "cross-encoder"

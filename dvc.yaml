@@ -1,0 +1,67 @@
+stages:
+  # Data pipeline
+  
+  # Stage 1: Download raw data from S3 (Just run 1 time)
+  download_raw:
+    cmd: python src/data/pipeline.py download_raw
+    params:
+      - config/data.yaml:
+          - s3
+    outs:
+      - data/raw/corpus.csv
+      - data/raw/train.csv
+
+  # Stage 2: Preprocess (clean) data
+  preprocess:
+    cmd: python src/data/pipeline.py preprocess
+    deps:
+      - data/raw/corpus.csv
+      - data/raw/train.csv
+      - src/data/processors.py
+    params:
+      - config/data.yaml:
+          - preprocessing
+    outs:
+      - data/processed/corpus_cleaned.csv
+      - data/processed/train_cleaned.csv
+
+  # Stage 3: Tokenize data
+  tokenize:
+    cmd: python src/data/pipeline.py tokenize
+    deps:
+      - data/processed/corpus_cleaned.csv
+      - data/processed/train_cleaned.csv
+      - src/data/processors.py
+    params:
+      - config/data.yaml:
+          - tokenization
+    outs:
+      - data/use/corpus_tokenized.csv
+      - data/use/train_tokenized.csv
+
+  # Stage 4: Split train data
+  split_data:
+    cmd: python src/data/pipeline.py split_data
+    deps:
+      - data/use/train_tokenized.csv
+      - src/data/processors.py
+    params:
+      - config/data.yaml:
+          - split
+    outs:
+      - data/use/train_split.csv
+      - data/use/val_split.csv
+      - data/use/test_split.csv
+
+  # Stage 5: Validate data
+  validate:
+    cmd: python src/data/pipeline.py validate
+    deps:
+      - data/use/train_split.csv
+      - data/use/val_split.csv
+      - data/use/test_split.csv
+      - data/use/corpus_tokenized.csv
+      - src/data/processors.py
+    metrics:
+      - reports/validation_metrics.json:
+          cache: false

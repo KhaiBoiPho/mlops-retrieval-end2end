@@ -1,0 +1,37 @@
+# MLflow model loading
+model:
+  mlflow_tracking_uri: "http://127.0.0.1:5000"
+  mlflow_model_name: "bi-encoder-legal-retrieval"
+  mlflow_model_stage: "latest"  # or "Production", "1", etc.
+  mlflow_run_id: null  # Optional: load from specific run
+
+# Corpus embeddings
+corpus:
+  embeddings_path: "artifacts/corpus_embeddings/corpus_embeddings.pt"
+  ids_path: "artifacts/corpus_embeddings/corpus_ids.pkl"
+  data_path: "data/use/corpus_tokenized.csv"
+  
+  # S3 backup (optional)
+  use_s3: false
+  s3_bucket: "khai-bucket-s3-mlflow"
+  s3_key: "corpus_embeddings/corpus_embeddings.pt"
+
+# Server configuration
+server:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  reload: false
+
+# Inference settings
+inference:
+  batch_size: 32
+  max_seq_length: 256
+  device: "cuda"  # cuda/cpu
+  top_k: 50  # Number of candidates to return
+
+# Cache settings (optional)
+cache:
+  enable: true
+  ttl: 3600  # 1 hour
+  max_size: 10000
