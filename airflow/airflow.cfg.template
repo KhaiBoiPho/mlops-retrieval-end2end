@@ -1,0 +1,7 @@
+[core]
+fernet_key = ${AIRFLOW__CORE__FERNET_KEY}
+dags_folder = dags
+load_examples = False
+
+[webserver]
+secret_key = ${AIRFLOW__WEBSERVER__SECRET_KEY}

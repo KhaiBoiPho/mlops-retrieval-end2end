@@ -139,3 +139,10 @@ config/secrets.yaml
 
 # Project specific
 simple_auth_manager_passwords.json.generated
+# Airflow sensitive files
+airflow/airflow.cfg
+airflow/*.db
+airflow/*.db-shm
+airflow/*.db-wal
+airflow/simple_auth_manager_passwords.json.generated
+airflow/webserver_config.py
