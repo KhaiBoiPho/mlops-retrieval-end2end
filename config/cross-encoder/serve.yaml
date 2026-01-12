@@ -4,7 +4,7 @@
 model:
   # S3 configuration
   s3_bucket: "khai-bucket-s3-mlflow"
-  model_id: "your_cross_encoder_model_id"  # Update this
+  model_id: "2d312333596f40aa879404d72e48c2d2"  # Update this
   model_type: "cross-encoder"
   local_path: "/app/models/cross-encoder"
 
