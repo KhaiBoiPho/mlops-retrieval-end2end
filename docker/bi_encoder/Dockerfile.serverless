@@ -2,29 +2,42 @@ FROM runpod/pytorch:2.1.0-py3.10-cuda11.8.0-devel
 
 WORKDIR /app
 
-# System dependencies
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    git curl awscli \
+    git \
+    curl \
+    awscli \
     && rm -rf /var/lib/apt/lists/*
 
-# Python dependencies
+# Copy requirements
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Install RunPod SDK
 RUN pip install --no-cache-dir runpod
 
-# Copy ALL source code (including src/models/)
-COPY src/ ./src/
+# Copy source code - EXPLICIT COPY for each needed directory
+COPY src/__init__.py ./src/__init__.py
+COPY src/models/ ./src/models/
+COPY src/serve/ ./src/serve/
+COPY src/common/ ./src/common/
+COPY src/entity/ ./src/entity/
+
+# Copy config
 COPY config/ ./config/
 
-# Debug: Show structure (remove after fixing)
-RUN echo "=== Directory structure ===" && \
-    ls -la /app/src/ && \
-    ls -la /app/src/models/ && \
-    ls -la /app/src/models/bi_encoder/
+# Verify the copy worked
+RUN echo "=== Verifying src/models/ exists ===" && \
+    test -d /app/src/models && echo "✓ src/models/ exists" || echo "✗ src/models/ missing" && \
+    test -d /app/src/models/bi_encoder && echo "✓ src/models/bi_encoder/ exists" || echo "✗ src/models/bi_encoder/ missing" && \
+    test -f /app/src/models/bi_encoder/model.py && echo "✓ model.py exists" || echo "✗ model.py missing"
 
-# Environment
+# Test Python import
+RUN python -c "import sys; sys.path.insert(0, '/app'); from src.models.bi_encoder.model import BiEncoder; print('✅ Import successful')"
+
+# Environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
 
-# Start
+# Start RunPod handler
 CMD ["python", "src/serve/bi_encoder_service/runpod_handler.py"]
