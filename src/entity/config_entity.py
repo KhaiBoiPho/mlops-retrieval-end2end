@@ -162,15 +162,11 @@ class BiEncoderEvalConfig:
 @dataclass
 class BiEncoderServeConfig:
     """Config for bi-encoder serving"""
-    # MLflow model reference
-    mlflow_tracking_uri: str
-    mlflow_model_name: str
-    mlflow_model_stage: str
-    
-    # Corpus
-    corpus_embeddings_path: Path
-    corpus_ids_path: Path
-    corpus_data_path: Path
+    # Model S3 configuration
+    s3_bucket: str
+    model_id: str  # Specific model ID or "latest"
+    model_type: str  # "bi-encoder"
+    local_path: Path
     
     # Server
     host: str
@@ -182,13 +178,11 @@ class BiEncoderServeConfig:
     batch_size: int
     max_seq_length: int
     device: str
-    top_k: int
     
-    # Optional
-    mlflow_run_id: Optional[str] = None
-    corpus_use_s3: bool = False
-    corpus_s3_bucket: str = ""
-    corpus_s3_key: str = ""
+    # Cache (optional)
+    cache_enable: bool = False
+    cache_ttl: int = 3600
+    cache_max_size: int = 10000
 
 
 # ==================== Hard Negative Mining ====================

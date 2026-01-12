@@ -1,136 +1,102 @@
+import os
+import json
 import torch
 from pathlib import Path
 from transformers import AutoTokenizer
-from typing import Tuple
-import mlflow
-import json
 
 from src.models.cross_encoder.model import CrossEncoder
 from src.common.logging_config import get_logger
-from src.entity.config_entity import CrossEncoderServeConfig
 
 logger = get_logger(__name__)
 
 
 class CrossEncoderModelLoader:
-    """Load cross-encoder model for reranking from MLflow"""
-
-    def __init__(self, config: CrossEncoderServeConfig):
+    """Load cross-encoder from S3 or local path"""
+    
+    def __init__(self, config=None):
         self.config = config
-        self.device = torch.device(config.device if torch.cuda.is_available() else "cpu")
-        logger.info(f"Device: {self.device}")
-
-    def load_model(self) -> Tuple[CrossEncoder, AutoTokenizer]:
-        """Load cross-encoder model from MLflow"""
-        logger.info("="*80)
-        logger.info("LOADING CROSS-ENCODER MODEL FROM MLFLOW")
-        logger.info("="*80)
-        logger.info(f"Model name: {self.config.mlflow_model_name}")
-        logger.info(f"Model stage: {self.config.mlflow_model_stage}")
+        self.model_path = Path(os.getenv("MODEL_PATH", "/app/models/cross-encoder"))
         
-        mlflow.set_tracking_uri(self.config.mlflow_tracking_uri)
+    def download_from_s3(self):
+        """Download model from S3 if not exists locally"""
+        if self.model_path.exists() and (self.model_path / "pytorch_model.bin").exists():
+            logger.info(f"✓ Model already exists at {self.model_path}")
+            return
         
-        # Build model URI
-        if self.config.mlflow_run_id:
-            model_uri = f"runs:/{self.config.mlflow_run_id}/best_model"
-            logger.info(f"Loading from run ID: {self.config.mlflow_run_id}")
-        elif self.config.mlflow_model_stage.lower() == "latest":
-            # Get latest version from registry
-            client = mlflow.tracking.MlflowClient()
-            versions = client.search_model_versions(
-                f"name='{self.config.mlflow_model_name}'"
-            )
-            
-            if not versions:
-                raise ValueError(f"No versions found for model: {self.config.mlflow_model_name}")
-            
-            latest_version = sorted(versions, key=lambda x: int(x.version), reverse=True)[0]
-            logger.info(f"Latest version found: {latest_version.version}")
-            
-            model_uri = f"models:/{self.config.mlflow_model_name}/{latest_version.version}"
-            logger.info(f"Loading from registry: {model_uri}")
-        else:
-            model_uri = f"models:/{self.config.mlflow_model_name}/{self.config.mlflow_model_stage}"
-            logger.info(f"Loading from registry: {model_uri}")
+        logger.info("📥 Downloading model from S3...")
         
-        # Download model artifacts from MLflow
-        logger.info("Downloading model artifacts...")
-        model_path = Path(mlflow.artifacts.download_artifacts(model_uri))
+        import subprocess
         
-        # Try different possible locations for checkpoint
-        possible_paths = [
-            model_path / "pytorch_model.bin",
-            model_path / "best_model.pt",
-            model_path / "model.pt",
+        s3_bucket = os.getenv("S3_BUCKET")
+        s3_model_path = os.getenv("S3_MODEL_PATH", "models/cross-encoder/latest")
+        
+        if not s3_bucket:
+            raise ValueError("S3_BUCKET environment variable not set")
+        
+        # Create directory
+        self.model_path.mkdir(parents=True, exist_ok=True)
+        
+        # Download with aws cli
+        cmd = [
+            "aws", "s3", "sync",
+            f"s3://{s3_bucket}/{s3_model_path}/best_model",
+            str(self.model_path),
+            "--quiet"
         ]
         
-        checkpoint_path = None
-        for path in possible_paths:
-            if path.exists():
-                checkpoint_path = path
-                logger.info(f"Found checkpoint at: {checkpoint_path}")
-                break
+        logger.info(f"Command: {' '.join(cmd)}")
         
-        if checkpoint_path is None:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            logger.error(f"S3 download failed: {result.stderr}")
+            raise RuntimeError(f"Failed to download model from S3: {result.stderr}")
+        
+        logger.info("✓ Model downloaded from S3")
+        
+    def load_model(self):
+        """Load model from local path (download from S3 if needed)"""
+        logger.info("="*80)
+        logger.info("LOADING CROSS-ENCODER MODEL")
+        logger.info("="*80)
+        
+        # Download from S3 if S3_BUCKET is set
+        if os.getenv("S3_BUCKET"):
+            self.download_from_s3()
+        
+        logger.info(f"Model path: {self.model_path}")
+        
+        # Verify model exists
+        if not (self.model_path / "pytorch_model.bin").exists():
             raise FileNotFoundError(
-                f"No model checkpoint found in {model_path}. "
-                f"Tried: {[p.name for p in possible_paths]}"
+                f"Model not found at {self.model_path}/pytorch_model.bin"
             )
         
-        # Load checkpoint
-        checkpoint = torch.load(
-            checkpoint_path,
-            map_location=self.device,
-            weights_only=False
-        )
-        
-        # Handle different checkpoint formats
-        if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
-            model_config = checkpoint.get('config')
-            state_dict = checkpoint['model_state_dict']
-        elif isinstance(checkpoint, dict) and 'state_dict' in checkpoint:
-            model_config = checkpoint.get('config')
-            state_dict = checkpoint['state_dict']
-        else:
-            # Direct state dict
-            state_dict = checkpoint
-            model_config = None
-        
-        if model_config is None:
-            # Try to load from model_config.json
-            config_path = model_path / "model_config.json"
-            if config_path.exists():
-                with open(config_path) as f:
-                    model_config_dict = json.load(f)
-                
-                class SimpleConfig:
-                    def __init__(self, d):
-                        for k, v in d.items():
-                            setattr(self, k, v)
-                
-                model_config = SimpleConfig(model_config_dict)
-            else:
-                raise ValueError("Model config not found")
+        # Load config
+        config_path = self.model_path / "model_config.json"
+        with open(config_path) as f:
+            model_config = json.load(f)
         
         # Initialize model
         model = CrossEncoder(
-            model_name=model_config.model_name,
-            num_labels=getattr(model_config, 'num_labels', 1)
+            model_name=model_config["model_name"],
+            num_labels=model_config.get("num_labels", 1)
         )
-
+        
         # Load weights
-        model.load_state_dict(state_dict)
-        model.to(self.device)
-        model.eval()
-
-        # Load tokenizer
-        tokenizer = AutoTokenizer.from_pretrained(
-            model.encoder.config._name_or_path
+        logger.info("Loading model weights...")
+        state_dict = torch.load(
+            self.model_path / "pytorch_model.bin",
+            map_location="cpu",
+            weights_only=False
         )
-
+        model.load_state_dict(state_dict)
+        
+        # Load tokenizer
+        logger.info("Loading tokenizer...")
+        tokenizer = AutoTokenizer.from_pretrained(str(self.model_path))
+        
         logger.info("✓ Model loaded successfully")
-        logger.info(f"  Model: {model_config.model_name}")
-        logger.info(f"  Device: {self.device}")
-        logger.info(f"  Num labels: {model.num_labels}")
+        logger.info("="*80)
         
         return model, tokenizer

@@ -1,0 +1,37 @@
+FROM runpod/pytorch:2.1.0-py3.10-cuda11.8.0-devel
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    awscli \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install RunPod SDK
+RUN pip install --no-cache-dir runpod
+
+# Copy source code
+COPY src/ ./src/
+COPY config/ ./config/
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
+
+# AWS credentials (will be provided by RunPod environment)
+# ENV AWS_ACCESS_KEY_ID=
+# ENV AWS_SECRET_ACCESS_KEY=
+# ENV AWS_DEFAULT_REGION=ap-southeast-1
+
+# These can override config values
+# ENV S3_BUCKET=khai-bucket-s3-mlflow
+# ENV MODEL_ID=0f0eae5cd35744caa55b4f784ec5559e
+
+# Start RunPod handler
+CMD ["python", "src/serve/bi_encoder_service/runpod_handler.py"]

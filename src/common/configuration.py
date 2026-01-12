@@ -76,7 +76,7 @@ class ConfigurationManager:
             Path("logs")
         ])
 
-    # ==================== DATA PIPELINE CONFIGS ====================
+    # Data pipeline configs
     
     def get_data_ingestion_config(self) -> DataIngestionConfig:
         """Config for downloading RAW data from S3 (only once)"""
@@ -131,8 +131,7 @@ class ConfigurationManager:
             batch_size=safe_int(tokenization.get('batch_size', 100))
         )
 
-    # ==================== BI-ENCODER CONFIGS ====================
-    
+    # Bi-encoder configs
     def get_bi_encoder_training_config(self) -> BiEncoderTrainingConfig:
         """Load bi-encoder training configuration"""
         config = self.bi_encoder_train_config
@@ -290,39 +289,60 @@ class ConfigurationManager:
         )
     
     def get_bi_encoder_serve_config(self) -> BiEncoderServeConfig:
-        """Config for bi-encoder serving"""
-        config = self.bi_encoder_serve_config
-        
-        return BiEncoderServeConfig(
-            # MLflow
-            mlflow_tracking_uri=str(config.model.mlflow_tracking_uri),
-            mlflow_model_name=str(config.model.mlflow_model_name),
-            mlflow_model_stage=str(config.model.mlflow_model_stage),
-            mlflow_run_id=config.model.get('mlflow_run_id', None),
+            """Config for bi-encoder serving"""
+            config = self.bi_encoder_serve_config
             
-            # Corpus
-            corpus_embeddings_path=Path(config.corpus.embeddings_path),
-            corpus_ids_path=Path(config.corpus.ids_path),
-            corpus_data_path=Path(config.corpus.data_path),
-            corpus_use_s3=config.corpus.get('use_s3', False),
-            corpus_s3_bucket=config.corpus.get('s3_bucket', ''),
-            corpus_s3_key=config.corpus.get('s3_key', ''),
+            # Get model configuration
+            model_config = config.model
+            s3_bucket = str(model_config.s3_bucket)
+            model_id = str(model_config.model_id)
+            model_type = str(model_config.model_type)
+            local_path = Path(model_config.local_path)
             
-            # Server
-            host=str(config.server.host),
-            port=int(config.server.port),
-            workers=int(config.server.workers),
-            reload=bool(config.server.reload),
+            # Get server configuration
+            server_config = config.server
+            host = str(server_config.host)
+            port = safe_int(server_config.port)
+            workers = safe_int(server_config.workers)
+            reload = safe_bool(server_config.reload)
             
-            # Inference
-            batch_size=int(config.inference.batch_size),
-            max_seq_length=int(config.inference.max_seq_length),
-            device=str(config.inference.device),
-            top_k=int(config.inference.top_k)
-        )
+            # Get inference configuration
+            inference_config = config.inference
+            batch_size = safe_int(inference_config.batch_size)
+            max_seq_length = safe_int(inference_config.max_seq_length)
+            device = str(inference_config.device)
+            
+            # Get cache configuration (optional)
+            cache_config = config.get('cache', {})
+            cache_enable = safe_bool(cache_config.get('enable', False))
+            cache_ttl = safe_int(cache_config.get('ttl', 3600))
+            cache_max_size = safe_int(cache_config.get('max_size', 10000))
+            
+            return BiEncoderServeConfig(
+                # Model S3
+                s3_bucket=s3_bucket,
+                model_id=model_id,
+                model_type=model_type,
+                local_path=local_path,
+                
+                # Server
+                host=host,
+                port=port,
+                workers=workers,
+                reload=reload,
+                
+                # Inference
+                batch_size=batch_size,
+                max_seq_length=max_seq_length,
+                device=device,
+                
+                # Cache
+                cache_enable=cache_enable,
+                cache_ttl=cache_ttl,
+                cache_max_size=cache_max_size
+            )
 
-    # ==================== HARD NEGATIVE MINING ====================
-    
+    # Hard negative mining
     def get_hard_negative_mining_config(self, split: str = 'train') -> HardNegativeMiningConfig:
         """Config for hard negative mining
         
@@ -371,8 +391,8 @@ class ConfigurationManager:
             device=str(config.mining.device),
             show_progress=safe_bool(config.mining.get('show_progress', True))
         )
-    # ==================== CROSS-ENCODER CONFIGS ====================
-    
+
+    # Cross-encoder configs    
     def get_cross_encoder_training_config(self) -> CrossEncoderTrainingConfig:
         """Config for cross-encoder training"""
         config = self.cross_encoder_train_config

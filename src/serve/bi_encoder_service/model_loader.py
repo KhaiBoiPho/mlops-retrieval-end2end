@@ -1,192 +1,161 @@
+import json
 import torch
 from pathlib import Path
-from typing import Tuple, Dict
 from transformers import AutoTokenizer
-import mlflow
-import json
 
-from src.common.configuration import BiEncoderServeConfig
 from src.models.bi_encoder.model import BiEncoder
 from src.common.logging_config import get_logger
-from src.common.s3_utils import S3Client
+from src.entity.config_entity import BiEncoderServeConfig
 
 logger = get_logger(__name__)
 
 
 class BiEncoderModelLoader:
-    """Load bi-encoder model and corpus embeddings"""
-
+    """Load bi-encoder from S3 or local path"""
+    
     def __init__(self, config: BiEncoderServeConfig):
         self.config = config
-        self.device = torch.device(config.device if torch.cuda.is_available() else "cpu")
-        logger.info(f"Device: {self.device}")
-
-    def load_model(self) -> Tuple[BiEncoder, AutoTokenizer]:
-        """Load bi-encoder model from MLflow"""
-        logger.info("="*80)
-        logger.info("LOADING BI-ENCODER MODEL FROM MLFLOW")
-        logger.info("="*80)
-        logger.info(f"Model name: {self.config.mlflow_model_name}")
-        logger.info(f"Model stage: {self.config.mlflow_model_stage}")
+        self.model_path = Path(config.local_path)
         
-        mlflow.set_tracking_uri(self.config.mlflow_tracking_uri)
+    def download_from_s3(self):
+        """Download model from S3 if not exists locally"""
+        if self.model_path.exists() and (self.model_path / "pytorch_model.bin").exists():
+            logger.info(f"✓ Model already exists at {self.model_path}")
+            return
         
-        # Build model URI
-        if self.config.mlflow_run_id:
-            model_uri = f"runs:/{self.config.mlflow_run_id}/best_model"
-            logger.info(f"Loading from run ID: {self.config.mlflow_run_id}")
-        elif self.config.mlflow_model_stage.lower() == "latest":
-            # Get latest version from registry
-            client = mlflow.tracking.MlflowClient()
-            versions = client.search_model_versions(
-                f"name='{self.config.mlflow_model_name}'"
-            )
-            
-            if not versions:
-                raise ValueError(f"No versions found for model: {self.config.mlflow_model_name}")
-            
-            latest_version = sorted(versions, key=lambda x: int(x.version), reverse=True)[0]
-            logger.info(f"Latest version found: {latest_version.version}")
-            
-            model_uri = f"models:/{self.config.mlflow_model_name}/{latest_version.version}"
-            logger.info(f"Loading from registry: {model_uri}")
-        else:
-            model_uri = f"models:/{self.config.mlflow_model_name}/{self.config.mlflow_model_stage}"
-            logger.info(f"Loading from registry: {model_uri}")
+        logger.info("📥 Downloading bi-encoder model from S3...")
         
-        # Download model artifacts from MLflow
-        logger.info("Downloading model artifacts...")
-        model_path = Path(mlflow.artifacts.download_artifacts(model_uri))
+        import subprocess
         
-        # Try different possible locations for checkpoint
-        possible_paths = [
-            model_path / "pytorch_model.bin",
-            model_path / "best_model.pt",
-            model_path / "model.pt",
+        s3_bucket = self.config.s3_bucket
+        model_id = self.config.model_id
+        
+        # Determine model ID
+        if model_id == "latest":
+            # Get latest model ID from S3
+            model_id = self._get_latest_model_id(s3_bucket, "bi-encoder")
+            logger.info(f"Using latest bi-encoder model: {model_id}")
+        
+        s3_prefix = f"models/bi-encoder/{model_id}"
+        
+        # Create directory
+        self.model_path.mkdir(parents=True, exist_ok=True)
+        
+        # Download best_model folder
+        cmd = [
+            "aws", "s3", "sync",
+            f"s3://{s3_bucket}/{s3_prefix}/best_model/",
+            str(self.model_path),
+            "--quiet"
         ]
         
-        checkpoint_path = None
-        for path in possible_paths:
-            if path.exists():
-                checkpoint_path = path
-                logger.info(f"Found checkpoint at: {checkpoint_path}")
-                break
+        logger.info(f"Downloading from: s3://{s3_bucket}/{s3_prefix}/best_model/")
         
-        if checkpoint_path is None:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            logger.error(f"S3 download failed: {result.stderr}")
+            raise RuntimeError(f"Failed to download model from S3: {result.stderr}")
+        
+        logger.info("✓ Bi-encoder model downloaded from S3")
+    
+    def _get_latest_model_id(self, s3_bucket: str, model_type: str) -> str:
+        """Get latest model ID from S3 by sorting folders by modification time"""
+        import subprocess
+        
+        cmd = [
+            "aws", "s3", "ls",
+            f"s3://{s3_bucket}/models/{model_type}/",
+            "--recursive"
+        ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to list S3 models: {result.stderr}")
+        
+        # Parse output and find latest
+        lines = result.stdout.strip().split('\n')
+        if not lines:
+            raise RuntimeError(f"No models found in s3://{s3_bucket}/models/{model_type}/")
+        
+        # Extract model IDs from paths like "models/bi-encoder/0f0eae5cd35744caa55b4f784ec5559e/"
+        model_ids = set()
+        for line in lines:
+            parts = line.split()
+            if len(parts) >= 4:
+                path = parts[3]  # The S3 key
+                if f"models/{model_type}/" in path:
+                    model_id = path.split(f"models/{model_type}/")[1].split('/')[0]
+                    if model_id:
+                        model_ids.add(model_id)
+        
+        if not model_ids:
+            raise RuntimeError("No valid model IDs found")
+        
+        # Return the last one when sorted (alphabetically)
+        # You might want to implement better logic here (e.g., by timestamp)
+        latest_id = sorted(model_ids)[-1]
+        return latest_id
+        
+    def load_model(self):
+        """Load model from local path (download from S3 if needed)"""
+        logger.info("="*80)
+        logger.info("LOADING BI-ENCODER MODEL")
+        logger.info("="*80)
+        
+        # Download from S3 if S3 bucket is configured
+        if self.config.s3_bucket:
+            self.download_from_s3()
+        
+        logger.info(f"Model path: {self.model_path}")
+        
+        # Verify model exists
+        if not (self.model_path / "pytorch_model.bin").exists():
             raise FileNotFoundError(
-                f"No model checkpoint found in {model_path}. "
-                f"Tried: {[p.name for p in possible_paths]}"
+                f"Model not found at {self.model_path}/pytorch_model.bin\n"
+                f"Please ensure:\n"
+                f"1. Model is uploaded to S3 at s3://{self.config.s3_bucket}/models/bi-encoder/{self.config.model_id}/best_model/, or\n"
+                f"2. Model exists at local path {self.model_path}"
             )
         
-        # Load checkpoint
-        checkpoint = torch.load(
-            checkpoint_path,
-            map_location=self.device,
-            weights_only=False
-        )
+        # Load config
+        config_path = self.model_path / "model_config.json"
+        with open(config_path) as f:
+            model_config = json.load(f)
         
-        # Handle different checkpoint formats
-        if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
-            model_config = checkpoint.get('config')
-            state_dict = checkpoint['model_state_dict']
-        elif isinstance(checkpoint, dict) and 'state_dict' in checkpoint:
-            model_config = checkpoint.get('config')
-            state_dict = checkpoint['state_dict']
-        else:
-            # Direct state dict
-            state_dict = checkpoint
-            model_config = None
-        
-        if model_config is None:
-            # Try to load from model_config.json
-            config_path = model_path / "model_config.json"
-            if config_path.exists():
-                with open(config_path) as f:
-                    model_config_dict = json.load(f)
-                
-                class SimpleConfig:
-                    def __init__(self, d):
-                        for k, v in d.items():
-                            setattr(self, k, v)
-                
-                model_config = SimpleConfig(model_config_dict)
-            else:
-                raise ValueError("Model config not found")
+        logger.info(f"Model: {model_config['model_name']}")
+        logger.info(f"Pooling: {model_config.get('pooling', 'mean')}")
+        logger.info(f"Normalize: {model_config.get('normalize', True)}")
         
         # Initialize model
         model = BiEncoder(
-            model_name=model_config.model_name,
-            pooling=getattr(model_config, 'pooling', 'mean'),
-            normalize=getattr(model_config, 'normalize', True)
+            model_name=model_config["model_name"],
+            pooling=model_config.get("pooling", "mean"),
+            normalize=model_config.get("normalize", True)
         )
         
         # Load weights
-        model.load_state_dict(state_dict)
-        model.to(self.device)
-        model.eval()
-        
-        # Load tokenizer
-        tokenizer = AutoTokenizer.from_pretrained(
-            model.encoder.config._name_or_path
-        )
-        
-        logger.info("✓ Model loaded successfully")
-        logger.info(f"  Model: {model_config.model_name}")
-        logger.info(f"  Device: {self.device}")
-        logger.info(f"  Pooling: {model.pooling}")
-        logger.info(f"  Normalize: {model.normalize}")
-        
-        return model, tokenizer
-    
-    def load_corpus_embeddings(self) -> Dict:
-        """Load pre-computed corpus embeddings"""
-        logger.info("="*80)
-        logger.info("LOADING CORPUS EMBEDDINGS")
-        logger.info("="*80)
-
-        # Download from S3 if needed
-        if self.config.corpus_use_s3:
-            logger.info("Downloading corpus embeddings from S3...")
-            self._download_corpus_from_s3()
-
-        embeddings_path = self.config.corpus_embeddings_path
-
-        if not embeddings_path.exists():
-            raise FileNotFoundError(f"Corpus embeddings not found: {embeddings_path}")
-
-        # Load embeddings
-        logger.info(f"Loading embeddings from: {embeddings_path}")
-        data = torch.load(
-            embeddings_path,
-            map_location=self.device,
+        logger.info("Loading model weights...")
+        state_dict = torch.load(
+            self.model_path / "pytorch_model.bin",
+            map_location="cpu",
             weights_only=False
         )
-
-        # Move embeddings to device
-        data['embeddings'] = data['embeddings'].to(self.device)
-
-        logger.info("✓ Corpus embeddings loaded successfully")
-        logger.info(f"  Documents: {len(data['cids']):,}")
-        logger.info(f"  Embedding dimension: {data['embeddings'].shape[1]}")
-        logger.info(f"  Memory: {data['embeddings'].element_size() * data['embeddings'].nelement() / 1024 / 1024:.2f} MB")
+        model.load_state_dict(state_dict)
         
-        return data
-    
-    def _download_corpus_from_s3(self):
-        """Download corpus embeddings from S3"""
-        s3_client = S3Client()
+        # Move to device
+        device = torch.device(self.config.device if torch.cuda.is_available() and self.config.device == "cuda" else "cpu")
+        model = model.to(device)
+        model.eval()
         
-        local_path = self.config.corpus_embeddings_path
-        local_path.parent.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Model loaded on device: {device}")
         
-        success = s3_client.download_file(
-            s3_bucket=self.config.corpus_s3_bucket,
-            s3_key=self.config.corpus_s3_key,
-            local_path=local_path,
-            show_progress=True
-        )
+        # Load tokenizer
+        logger.info("Loading tokenizer...")
+        tokenizer = AutoTokenizer.from_pretrained(str(self.model_path))
         
-        if not success:
-            raise RuntimeError("Failed to download corpus embeddings from S3")
+        logger.info("✓ Bi-encoder model loaded successfully")
+        logger.info("="*80)
         
-        logger.info(f"✓ Corpus embeddings downloaded to: {local_path}")
+        return model, tokenizer

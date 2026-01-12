@@ -1,37 +1,28 @@
-# MLflow model loading
-model:
-  mlflow_tracking_uri: "http://127.0.0.1:5000"
-  mlflow_model_name: "bi-encoder-legal-retrieval"
-  mlflow_model_stage: "latest"  # or "Production", "1", etc.
-  mlflow_run_id: null  # Optional: load from specific run
+# Bi-Encoder Serving Configuration
 
-# Corpus embeddings
-corpus:
-  embeddings_path: "artifacts/corpus_embeddings/corpus_embeddings.pt"
-  ids_path: "artifacts/corpus_embeddings/corpus_ids.pkl"
-  data_path: "data/use/corpus_tokenized.csv"
-  
-  # S3 backup (optional)
-  use_s3: false
+# Model configuration
+model:
+  # S3 configuration
   s3_bucket: "khai-bucket-s3-mlflow"
-  s3_key: "corpus_embeddings/corpus_embeddings.pt"
+  model_id: "eada2728338848f987d12d4fa2a0b77b"  # Specific model version, or "latest"
+  model_type: "bi-encoder"  # bi-encoder or cross-encoder
+  local_path: "artifacts/bi-encoder"  # Model path (will be downloaded to this location)
 
 # Server configuration
 server:
   host: "0.0.0.0"
   port: 8000
-  workers: 4
+  workers: 1  # RunPod serverless typically uses 1 worker
   reload: false
 
 # Inference settings
 inference:
   batch_size: 32
   max_seq_length: 256
-  device: "cuda"  # cuda/cpu
-  top_k: 50  # Number of candidates to return
+  device: "cuda"  # cuda/cpu, auto-detected if not specified
 
-# Cache settings (optional)
+# Cache settings (optional, for future use)
 cache:
-  enable: true
+  enable: false
   ttl: 3600  # 1 hour
   max_size: 10000

@@ -32,7 +32,6 @@ mlflow:
   tracking_uri: "http://127.0.0.1:5000"
   experiment_name: "cross-encoder-training"
 
-# ✅ Copy từ bi-encoder config
 s3:
   enabled: true
   bucket: "khai-bucket-s3-mlflow"  # Same bucket
@@ -41,7 +40,7 @@ s3:
   upload_all: true
   upload_strategy: "incremental"   # hoặc "final"
 
-# ✅ Model registry
+# Model registry
 registry:
   enabled: true
   model_name: "cross-encoder"
