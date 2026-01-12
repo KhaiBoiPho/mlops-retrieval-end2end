@@ -79,7 +79,7 @@ data/use/*.csv
 
 # Models & Artifacts (tracked by MLflow/DVC)
 artifacts/
-models/
+# models/
 *.pt
 *.pth
 *.bin
@@ -146,3 +146,7 @@ airflow/*.db-shm
 airflow/*.db-wal
 airflow/simple_auth_manager_passwords.json.generated
 airflow/webserver_config.py
+
+
+!src/models/**/*.py
+!src/models/**/__init__.py
