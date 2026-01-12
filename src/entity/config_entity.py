@@ -298,13 +298,11 @@ class CrossEncoderEvalConfig:
 @dataclass
 class CrossEncoderServeConfig:
     """Config for cross-encoder serving"""
-    # MLflow model reference
-    mlflow_tracking_uri: str
-    mlflow_model_name: str
-    mlflow_model_stage: str
-    
-    # Corpus (optional)
-    corpus_path: Path
+    # Model S3 configuration
+    s3_bucket: str
+    model_id: str
+    model_type: str
+    local_path: Path
     
     # Server
     host: str
@@ -316,10 +314,11 @@ class CrossEncoderServeConfig:
     batch_size: int
     max_seq_length: int
     device: str
-    top_n: int
     
-    # Optional
-    mlflow_run_id: Optional[str] = None
+    # Cache (optional)
+    cache_enable: bool = False
+    cache_ttl: int = 3600
+    cache_max_size: int = 10000
 
 
 # ==================== Monitoring ====================

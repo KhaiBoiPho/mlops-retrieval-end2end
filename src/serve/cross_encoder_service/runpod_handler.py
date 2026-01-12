@@ -1,14 +1,17 @@
 """
-RunPod Serverless Handler for Cross-Encoder Reranking Service
-
-This handler wraps the reranking logic to work with RunPod's serverless platform.
+RunPod Serverless Handler for Cross-Encoder
 """
 import runpod
+# import torch
+# import time
+import os
 from typing import Dict, Any
+from pathlib import Path
 
 from src.serve.cross_encoder_service.model_loader import CrossEncoderModelLoader
 from src.serve.cross_encoder_service.reranker import CrossEncoderReranker
 from src.common.configuration import ConfigurationManager
+from src.entity.config_entity import CrossEncoderServeConfig
 from src.common.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -18,24 +21,59 @@ reranker: CrossEncoderReranker = None
 config = None
 
 
-def initialize_model():
-    """Initialize model on cold start"""
+def load_model():
+    """Load model on cold start"""
     global reranker, config
     
-    if reranker is not None:
-        return  # Already initialized
-    
     logger.info("="*80)
-    logger.info("INITIALIZING CROSS-ENCODER FOR RUNPOD SERVERLESS")
+    logger.info("INITIALIZING CROSS-ENCODER ON RUNPOD SERVERLESS")
     logger.info("="*80)
     
     try:
         # Load configuration
         config_manager = ConfigurationManager()
-        config = config_manager.get_cross_encoder_serve_config()
+        raw_config = config_manager.cross_encoder_serve_config
+        
+        # Parse to CrossEncoderServeConfig
+        config = CrossEncoderServeConfig(
+            s3_bucket=str(raw_config.model.s3_bucket),
+            model_id=str(raw_config.model.model_id),
+            model_type=str(raw_config.model.model_type),
+            local_path=Path(raw_config.model.local_path),
+            host=str(raw_config.server.host),
+            port=int(raw_config.server.port),
+            workers=int(raw_config.server.workers),
+            reload=bool(raw_config.server.reload),
+            batch_size=int(raw_config.inference.batch_size),
+            max_seq_length=int(raw_config.inference.max_seq_length),
+            device=str(raw_config.inference.device),
+            cache_enable=bool(raw_config.get('cache', {}).get('enable', False)),
+            cache_ttl=int(raw_config.get('cache', {}).get('ttl', 3600)),
+            cache_max_size=int(raw_config.get('cache', {}).get('max_size', 10000))
+        )
+        
+        # Override with env vars if provided
+        if os.getenv("S3_BUCKET"):
+            config.s3_bucket = os.getenv("S3_BUCKET")
+            logger.info(f"Override S3_BUCKET: {config.s3_bucket}")
+        
+        if os.getenv("MODEL_ID"):
+            config.model_id = os.getenv("MODEL_ID")
+            logger.info(f"Override MODEL_ID: {config.model_id}")
+        
+        if os.getenv("DEVICE"):
+            config.device = os.getenv("DEVICE")
+            logger.info(f"Override DEVICE: {config.device}")
+        
+        logger.info("Configuration:")
+        logger.info(f"  S3 Bucket: {config.s3_bucket}")
+        logger.info(f"  Model ID: {config.model_id}")
+        logger.info(f"  Device: {config.device}")
+        logger.info(f"  Batch Size: {config.batch_size}")
+        logger.info(f"  Max Seq Length: {config.max_seq_length}")
         
         # Load model
-        loader = CrossEncoderModelLoader(config)
+        loader = CrossEncoderModelLoader(config=config)
         model, tokenizer = loader.load_model()
         
         # Initialize reranker
@@ -45,55 +83,41 @@ def initialize_model():
             config=config
         )
         
-        logger.info("✓ Model initialized successfully")
+        logger.info("✓ CROSS-ENCODER READY ON RUNPOD")
+        logger.info("="*80)
         
     except Exception as e:
-        logger.error(f"Failed to initialize model: {e}")
+        logger.error(f"Failed to load model: {e}", exc_info=True)
         raise
 
 
 def handler(event: Dict[str, Any]) -> Dict[str, Any]:
     """
-    RunPod handler function
+    RunPod handler
     
-    Expected event format:
+    Input:
     {
         "input": {
             "action": "rerank" | "score_pair" | "batch_score",
-            "query": "user query",
-            "documents": [{"id": "1", "text": "doc1"}, ...] (for rerank),
-            "document": "single doc" (for score_pair),
-            "top_n": 10 (optional, for rerank)
-        }
-    }
-    
-    Returns:
-    {
-        "output": {
-            "results": [...] or "score": float,
-            "total": int,
-            "rerank_time_ms": float
+            "query": str,
+            "documents": [{"id": "1", "text": "..."}, ...],  # for rerank
+            "document": str,  # for score_pair
+            "top_n": int  # optional
         }
     }
     """
     try:
-        # Initialize model if not done yet
-        if reranker is None:
-            initialize_model()
-        
-        # Extract input
         input_data = event.get("input", {})
         action = input_data.get("action", "rerank")
         query = input_data.get("query")
         
         if not query:
-            return {"error": "Missing 'query' in input"}
+            return {"error": "Missing 'query' parameter"}
         
         if action == "rerank":
-            # Rerank documents
             documents = input_data.get("documents")
-            if not documents:
-                return {"error": "Missing 'documents' in input"}
+            if not documents or not isinstance(documents, list):
+                return {"error": "Missing or invalid 'documents' parameter"}
             
             top_n = input_data.get("top_n", len(documents))
             
@@ -115,19 +139,15 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
             )
             
             return {
-                "output": {
-                    "query": query,
-                    "results": reranked_results,
-                    "total": len(reranked_results),
-                    "rerank_time_ms": rerank_time
-                }
+                "results": reranked_results,
+                "total": len(reranked_results),
+                "rerank_time_ms": rerank_time
             }
         
         elif action == "score_pair":
-            # Score single pair
             document = input_data.get("document")
             if not document:
-                return {"error": "Missing 'document' in input"}
+                return {"error": "Missing 'document' parameter"}
             
             score, score_time = reranker.score_pair(
                 query=query,
@@ -135,19 +155,14 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
             )
             
             return {
-                "output": {
-                    "query": query,
-                    "document": document[:200] + "..." if len(document) > 200 else document,
-                    "score": score,
-                    "score_time_ms": score_time
-                }
+                "score": score,
+                "score_time_ms": score_time
             }
         
         elif action == "batch_score":
-            # Score multiple documents
             documents = input_data.get("documents")
-            if not documents:
-                return {"error": "Missing 'documents' in input"}
+            if not documents or not isinstance(documents, list):
+                return {"error": "Missing or invalid 'documents' parameter"}
             
             scores, score_time = reranker.score_batch(
                 query=query,
@@ -155,12 +170,9 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
             )
             
             return {
-                "output": {
-                    "query": query,
-                    "scores": scores,
-                    "count": len(scores),
-                    "score_time_ms": score_time
-                }
+                "scores": scores,
+                "count": len(scores),
+                "score_time_ms": score_time
             }
         
         else:
@@ -172,5 +184,5 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    logger.info("Starting RunPod serverless handler for Cross-Encoder...")
+    load_model()
     runpod.serverless.start({"handler": handler})

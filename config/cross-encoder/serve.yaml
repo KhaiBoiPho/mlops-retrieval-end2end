@@ -1,30 +1,28 @@
-# MLflow model loading
-model:
-  mlflow_tracking_uri: "http://127.0.0.1:5000"
-  mlflow_model_name: "cross-encoder-legal-retrieval"
-  mlflow_model_stage: "latest"  # or "Production", "1", etc.
-  mlflow_run_id: null  # Optional: load from specific run
+# Cross-Encoder Serving Configuration
 
-# Corpus (optional - for looking up full text)
-corpus:
-  path: "data/use/corpus_tokenized.csv"
+# Model configuration
+model:
+  # S3 configuration
+  s3_bucket: "khai-bucket-s3-mlflow"
+  model_id: "your_cross_encoder_model_id"  # Update this
+  model_type: "cross-encoder"
+  local_path: "/app/models/cross-encoder"
 
 # Server configuration
 server:
   host: "0.0.0.0"
   port: 8001
-  workers: 4
+  workers: 1
   reload: false
 
 # Inference settings
 inference:
-  batch_size: 16  # Smaller than bi-encoder
-  max_seq_length: 512  # Longer (query + document)
-  device: "cuda"  # cuda/cpu
-  top_n: 10  # Final results after reranking
+  batch_size: 16
+  max_seq_length: 512  # Cross-encoder typically needs longer
+  device: "cuda"
 
 # Cache settings (optional)
 cache:
-  enable: true
-  ttl: 3600  # 1 hour
-  max_size: 5000
+  enable: false
+  ttl: 3600
+  max_size: 10000

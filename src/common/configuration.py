@@ -490,30 +490,32 @@ class ConfigurationManager:
         )
 
     def get_cross_encoder_serve_config(self) -> CrossEncoderServeConfig:
-        """Config for cross-encoder serving"""
-        config = self.cross_encoder_serve_config
+        """Get cross-encoder serve config"""
+        raw_config = self.cross_encoder_serve_config  # Property access
         
+        # Parse config
         return CrossEncoderServeConfig(
-            # MLflow
-            mlflow_tracking_uri=str(config.model.mlflow_tracking_uri),
-            mlflow_model_name=str(config.model.mlflow_model_name),
-            mlflow_model_stage=str(config.model.mlflow_model_stage),
-            mlflow_run_id=config.model.get('mlflow_run_id', None),
-            
-            # Corpus
-            corpus_path=Path(config.corpus.path),
+            # Model S3
+            s3_bucket=str(raw_config.model.s3_bucket),
+            model_id=str(raw_config.model.model_id),
+            model_type=str(raw_config.model.model_type),
+            local_path=Path(raw_config.model.local_path),
             
             # Server
-            host=str(config.server.host),
-            port=int(config.server.port),
-            workers=int(config.server.workers),
-            reload=bool(config.server.reload),
+            host=str(raw_config.server.host),
+            port=int(raw_config.server.port),
+            workers=int(raw_config.server.workers),
+            reload=bool(raw_config.server.reload),
             
             # Inference
-            batch_size=int(config.inference.batch_size),
-            max_seq_length=int(config.inference.max_seq_length),
-            device=str(config.inference.device),
-            top_n=int(config.inference.top_n)
+            batch_size=int(raw_config.inference.batch_size),
+            max_seq_length=int(raw_config.inference.max_seq_length),
+            device=str(raw_config.inference.device),
+            
+            # Cache
+            cache_enable=bool(raw_config.get('cache', {}).get('enable', False)),
+            cache_ttl=int(raw_config.get('cache', {}).get('ttl', 3600)),
+            cache_max_size=int(raw_config.get('cache', {}).get('max_size', 10000))
         )
 
     # ==================== MONITORING CONFIG ====================
