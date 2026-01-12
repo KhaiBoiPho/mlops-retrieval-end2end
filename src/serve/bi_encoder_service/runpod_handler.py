@@ -31,7 +31,7 @@ def load_model():
     try:
         # Load configuration
         config_manager = ConfigurationManager()
-        config = config_manager.bi_encoder_eval_config()
+        config = config_manager.bi_encoder_serve_config()
 
         if os.getenv("S3_BUCKET"):
             config.s3_bucket = os.getenv("S3_BUCKET")
