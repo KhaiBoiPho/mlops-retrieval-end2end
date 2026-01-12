@@ -41,10 +41,17 @@ htmlcov/
 *.swo
 *~
 
-# Data & Models (don't include in image, load from MLflow)
+# Data & Trained Models (ignore artifacts, not source code)
 data/
 artifacts/
-models/
+# ✅ Specific model artifacts, not src/models/ code
+artifacts/bi-encoder/
+artifacts/cross-encoder/
+artifacts/corpus_embeddings/
+*.pt
+*.bin
+*.ckpt
+*.pth
 mlruns/
 mlartifacts/
 mlflow.db
