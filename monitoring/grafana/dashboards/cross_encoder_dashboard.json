@@ -1,0 +1,18 @@
+{
+  "title": "Cross-Encoder Detailed Metrics",
+  "panels": [
+    {
+      "title": "Reranking Time",
+      "targets": [{
+        "expr": "rate(endpoint_inference_duration_seconds_sum{endpoint=\"cross-encoder\",action=\"rerank\"}[5m])"
+      }]
+    },
+    {
+      "title": "Score Distribution Heatmap",
+      "type": "heatmap",
+      "targets": [{
+        "expr": "rate(endpoint_score_value_bucket{endpoint=\"cross-encoder\"}[5m])"
+      }]
+    }
+  ]
+}

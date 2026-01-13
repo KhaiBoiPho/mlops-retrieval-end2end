@@ -1,0 +1,17 @@
+{
+  "title": "Bi-Encoder Detailed Metrics",
+  "panels": [
+    {
+      "title": "Embedding Generation Time",
+      "targets": [{
+        "expr": "rate(endpoint_inference_duration_seconds_sum{endpoint=\"bi-encoder\"}[5m]) / rate(endpoint_inference_duration_seconds_count{endpoint=\"bi-encoder\"}[5m])"
+      }]
+    },
+    {
+      "title": "Batch Size Distribution",
+      "targets": [{
+        "expr": "rate(endpoint_batch_size_bucket{endpoint=\"bi-encoder\"}[5m])"
+      }]
+    }
+  ]
+}
