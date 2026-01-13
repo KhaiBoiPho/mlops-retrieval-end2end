@@ -1,0 +1,29 @@
+groups:
+  - name: recording_rules
+    interval: 30s
+    rules:
+      # Request rate
+      - record: endpoint:request_rate:1m
+        expr: rate(endpoint_requests_total[1m])
+      
+      # Success rate
+      - record: endpoint:success_rate:5m
+        expr: |
+          sum(rate(endpoint_requests_total{status="success"}[5m])) by (endpoint, action)
+          /
+          sum(rate(endpoint_requests_total[5m])) by (endpoint, action)
+      
+      # Average latency
+      - record: endpoint:latency:avg:5m
+        expr: |
+          sum(rate(endpoint_request_duration_seconds_sum[5m])) by (endpoint, action)
+          /
+          sum(rate(endpoint_request_duration_seconds_count[5m])) by (endpoint, action)
+      
+      # P95 latency
+      - record: endpoint:latency:p95:5m
+        expr: histogram_quantile(0.95, rate(endpoint_request_duration_seconds_bucket[5m]))
+      
+      # Cold start rate
+      - record: endpoint:cold_start_rate:1h
+        expr: rate(endpoint_cold_starts_total[1h])

@@ -1,0 +1,36 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'runpod-serverless'
+    environment: 'production'
+
+# Alert manager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+# Load alert rules
+rule_files:
+  - 'rules.yaml'
+  - 'bi_encoder_alerts.yaml'
+  - 'cross_encoder_alerts.yaml'
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Pushgateway for serverless metrics
+  - job_name: 'pushgateway'
+    honor_labels: true
+    static_configs:
+      - targets: ['pushgateway:9091']
+
+  # RunPod endpoints (if they expose metrics endpoint)
+  # - job_name: 'runpod-bi-encoder'
+  #   static_configs:
+  #     - targets: ['bi-encoder-endpoint:8000']

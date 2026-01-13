@@ -1,0 +1,19 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # RunPod logs (if exported to file)
+  - job_name: runpod-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: runpod
+          __path__: /var/log/runpod/*.log

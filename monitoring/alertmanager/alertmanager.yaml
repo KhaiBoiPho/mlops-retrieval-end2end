@@ -1,0 +1,43 @@
+global:
+  resolve_timeout: 5m
+
+# Telegram configuration
+route:
+  receiver: 'telegram'
+  group_by: ['alertname', 'severity', 'endpoint']
+  group_wait: 10s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'telegram'
+      group_wait: 0s
+      repeat_interval: 1h
+    
+    # Warning alerts - grouped
+    - match:
+        severity: warning
+      receiver: 'telegram'
+      group_wait: 30s
+      repeat_interval: 4h
+    
+    # Info alerts - daily digest
+    - match:
+        severity: info
+      receiver: 'telegram'
+      repeat_interval: 24h
+
+receivers:
+  - name: 'telegram'
+    webhook_configs:
+      - url: 'http://alertmanager-bot:8080/alert'
+        send_resolved: true
+
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'endpoint']

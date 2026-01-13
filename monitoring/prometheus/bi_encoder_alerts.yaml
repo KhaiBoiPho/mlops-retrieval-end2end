@@ -1,0 +1,80 @@
+groups:
+  - name: bi_encoder_alerts
+    interval: 30s
+    rules:
+      # 1️⃣ RELIABILITY
+      - alert: BiEncoderHighErrorRate
+        expr: |
+          (1 - endpoint:success_rate:5m{endpoint="bi-encoder"}) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          category: reliability
+        annotations:
+          summary: "Bi-Encoder error rate > 1%"
+          description: "Error rate is {{ $value | humanizePercentage }} for endpoint {{ $labels.endpoint }}"
+      
+      - alert: BiEncoderDown
+        expr: up{job="bi-encoder"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: reliability
+        annotations:
+          summary: "Bi-Encoder endpoint is down"
+      
+      # 2️⃣ PERFORMANCE
+      - alert: BiEncoderHighLatency
+        expr: |
+          endpoint:latency:p95:5m{endpoint="bi-encoder"} > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Bi-Encoder P95 latency > 100ms"
+          description: "P95 latency is {{ $value }}s"
+      
+      - alert: BiEncoderSlowInference
+        expr: |
+          endpoint_inference_duration_seconds{endpoint="bi-encoder"} > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Bi-Encoder inference time > 50ms"
+      
+      # 3️⃣ MODEL QUALITY
+      - alert: BiEncoderInvalidDimension
+        expr: |
+          endpoint_embedding_dimension{endpoint="bi-encoder"} != 768
+        for: 1m
+        labels:
+          severity: critical
+          category: model_quality
+        annotations:
+          summary: "Bi-Encoder returning wrong embedding dimension"
+          description: "Expected 768, got {{ $value }}"
+      
+      # 4️⃣ OPERABILITY  
+      - alert: BiEncoderFrequentRestarts
+        expr: |
+          rate(endpoint_cold_starts_total{endpoint="bi-encoder"}[1h]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          category: operability
+        annotations:
+          summary: "Bi-Encoder cold starts > 6/hour"
+      
+      # 5️⃣ COST
+      - alert: BiEncoderHighCost
+        expr: |
+          endpoint_cost_per_1k_requests{endpoint="bi-encoder"} > 0.10
+        for: 1h
+        labels:
+          severity: info
+          category: cost
+        annotations:
+          summary: "Bi-Encoder cost > $0.10 per 1k requests"

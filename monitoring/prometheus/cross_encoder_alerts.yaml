@@ -1,0 +1,48 @@
+groups:
+  - name: cross_encoder_alerts
+    interval: 30s
+    rules:
+      # 1️⃣ RELIABILITY
+      - alert: CrossEncoderHighErrorRate
+        expr: |
+          (1 - endpoint:success_rate:5m{endpoint="cross-encoder"}) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          category: reliability
+        annotations:
+          summary: "Cross-Encoder error rate > 1%"
+      
+      # 2️⃣ PERFORMANCE
+      - alert: CrossEncoderHighLatency
+        expr: |
+          endpoint:latency:p95:5m{endpoint="cross-encoder"} > 0.3
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Cross-Encoder P95 latency > 300ms"
+      
+      # 3️⃣ MODEL QUALITY
+      - alert: CrossEncoderInvalidScores
+        expr: |
+          (endpoint_score_min{endpoint="cross-encoder"} < 0) or
+          (endpoint_score_max{endpoint="cross-encoder"} > 1)
+        for: 1m
+        labels:
+          severity: critical
+          category: model_quality
+        annotations:
+          summary: "Cross-Encoder returning invalid scores"
+      
+      - alert: CrossEncoderScoreDistribution
+        expr: |
+          stddev(endpoint_score_value{endpoint="cross-encoder"}) < 0.05
+        for: 15m
+        labels:
+          severity: warning
+          category: model_quality
+        annotations:
+          summary: "Cross-Encoder scores have low variance"
+          description: "Might indicate model degradation"

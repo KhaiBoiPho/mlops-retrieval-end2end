@@ -1,0 +1,237 @@
+{
+  "dashboard": {
+    "title": "RunPod Endpoints Overview",
+    "timezone": "browser",
+    "refresh": "10s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "title": "🚨 Request Success Rate",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "endpoint:success_rate:5m",
+            "legendFormat": "{{endpoint}}"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": ["lastNotNull"]
+          },
+          "orientation": "auto",
+          "textMode": "value_and_name"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percentunit",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 0.95, "color": "yellow"},
+                {"value": 0.99, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "⚡ P95 Latency",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+        "targets": [
+          {
+            "expr": "endpoint:latency:p95:5m",
+            "legendFormat": "{{endpoint}}"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "calcs": ["lastNotNull"]
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 0.1, "color": "yellow"},
+                {"value": 0.3, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "💀 Error Rate",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "1 - endpoint:success_rate:5m",
+            "legendFormat": "{{endpoint}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percentunit",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 0.01, "color": "yellow"},
+                {"value": 0.05, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "🔥 Cold Starts (1h)",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+        "targets": [
+          {
+            "expr": "increase(endpoint_cold_starts_total[1h])",
+            "legendFormat": "{{endpoint}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 5, "color": "yellow"},
+                {"value": 10, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "📈 Request Rate (req/s)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+        "targets": [
+          {
+            "expr": "rate(endpoint_requests_total[1m])",
+            "legendFormat": "{{endpoint}} - {{action}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "reqps", "label": "Requests/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "title": "⏱️ Latency Distribution",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(endpoint_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "P50 - {{endpoint}}"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(endpoint_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "P95 - {{endpoint}}"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(endpoint_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "P99 - {{endpoint}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "s", "label": "Latency"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "title": "🎯 Embedding Dimensions (Bi-Encoder)",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 8, "x": 0, "y": 12},
+        "targets": [
+          {
+            "expr": "endpoint_embedding_dimension{endpoint=\"bi-encoder\"}",
+            "legendFormat": "Dimension"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 768, "color": "green"},
+                {"value": 769, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "📊 Score Distribution (Cross-Encoder)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 12},
+        "targets": [
+          {
+            "expr": "rate(endpoint_score_value_bucket{endpoint=\"cross-encoder\"}[5m])",
+            "legendFormat": "{{le}}"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Rate"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "title": "💰 Cost per 1k Requests",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 8, "x": 16, "y": 12},
+        "targets": [
+          {
+            "expr": "endpoint_cost_per_1k_requests",
+            "legendFormat": "{{endpoint}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 0.05, "color": "yellow"},
+                {"value": 0.10, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "📝 Recent Errors (Loki)",
+        "type": "logs",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 20},
+        "targets": [
+          {
+            "expr": "{job=\"runpod\"} |= \"ERROR\"",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "showTime": true,
+          "wrapLogMessage": true
+        }
+      }
+    ]
+  }
+}
