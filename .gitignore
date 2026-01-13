@@ -101,7 +101,7 @@ monitoring/grafana/data/
 
 # Docker
 *.tar
-docker-compose.override.yml
+docker-compose.override.yaml
 
 # Environment variables
 .env

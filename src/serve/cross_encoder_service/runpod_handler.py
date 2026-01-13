@@ -5,6 +5,7 @@ import runpod
 # import torch
 # import time
 import os
+import time
 from typing import Dict, Any
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from src.serve.cross_encoder_service.reranker import CrossEncoderReranker
 from src.common.configuration import ConfigurationManager
 from src.entity.config_entity import CrossEncoderServeConfig
 from src.common.logging_config import get_logger
+from src.monitoring.metrics_exporter import MetricsExporter
 
 logger = get_logger(__name__)
 
@@ -20,10 +22,16 @@ logger = get_logger(__name__)
 reranker: CrossEncoderReranker = None
 config = None
 
+# Initialize metrics exporter
+metrics_exporter = MetricsExporter(endpoint_name='cross-encoder')
+
 
 def load_model():
     """Load model on cold start"""
-    global reranker, config
+    global reranker, config, metrics_exporter
+
+    # Track cold start
+    metrics_exporter.track_cold_start()
     
     logger.info("="*80)
     logger.info("INITIALIZING CROSS-ENCODER ON RUNPOD SERVERLESS")
@@ -106,18 +114,26 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
         }
     }
     """
+
+    """RunPod handler with metrics"""
+    start_time = time.time()
+    action = event.get("input", {}).get("action", "rerank")
+    status = "success"
+    
     try:
         input_data = event.get("input", {})
         action = input_data.get("action", "rerank")
         query = input_data.get("query")
         
         if not query:
+            status = "error"
             return {"error": "Missing 'query' parameter"}
         
         if action == "rerank":
             documents = input_data.get("documents")
-            if not documents or not isinstance(documents, list):
-                return {"error": "Missing or invalid 'documents' parameter"}
+            if not documents:
+                status = "error"
+                return {"error": "Missing 'documents' parameter"}
             
             top_n = input_data.get("top_n", len(documents))
             
@@ -131,12 +147,22 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
                 for i, doc in enumerate(documents)
             ]
             
-            # Rerank
+            # Track inference time
+            inference_start = time.time()
             reranked_results, rerank_time = reranker.rerank(
                 query=query,
                 documents=docs,
                 top_n=top_n
             )
+            inference_time = time.time() - inference_start
+            
+            # Extract scores
+            scores = [r['score'] for r in reranked_results]
+            
+            # Track metrics
+            metrics_exporter.track_inference(action, inference_time)
+            metrics_exporter.track_scores(scores)
+            metrics_exporter.track_batch_size(len(documents))
             
             return {
                 "results": reranked_results,
@@ -147,40 +173,35 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
         elif action == "score_pair":
             document = input_data.get("document")
             if not document:
+                status = "error"
                 return {"error": "Missing 'document' parameter"}
             
-            score, score_time = reranker.score_pair(
-                query=query,
-                document=document
-            )
+            inference_start = time.time()
+            score, score_time = reranker.score_pair(query=query, document=document)
+            inference_time = time.time() - inference_start
+            
+            # Track metrics
+            metrics_exporter.track_inference(action, inference_time)
+            metrics_exporter.track_scores([score])
             
             return {
                 "score": score,
                 "score_time_ms": score_time
             }
         
-        elif action == "batch_score":
-            documents = input_data.get("documents")
-            if not documents or not isinstance(documents, list):
-                return {"error": "Missing or invalid 'documents' parameter"}
-            
-            scores, score_time = reranker.score_batch(
-                query=query,
-                documents=documents
-            )
-            
-            return {
-                "scores": scores,
-                "count": len(scores),
-                "score_time_ms": score_time
-            }
-        
         else:
+            status = "error"
             return {"error": f"Unknown action: {action}"}
     
     except Exception as e:
+        status = "error"
         logger.error(f"Handler error: {e}", exc_info=True)
         return {"error": str(e)}
+    
+    finally:
+        # Track request
+        duration = time.time() - start_time
+        metrics_exporter.track_request(action, status, duration)
 
 
 if __name__ == "__main__":

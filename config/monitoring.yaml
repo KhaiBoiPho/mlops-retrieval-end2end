@@ -8,7 +8,7 @@ grafana:
   dashboard_refresh_interval: 30  # seconds
 
 alerts:
-  rules_path: "monitoring/prometheus/rules.yml"
+  rules_path: "monitoring/prometheus/rules.yaml"
   
   slack:
     enable: false

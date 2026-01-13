@@ -72,7 +72,7 @@ airflow/airflow.db-wal
 
 # CI/CD
 .github/
-.gitlab-ci.yml
+.gitlab-ci.yaml
 
 # Docs
 docs/
@@ -81,7 +81,7 @@ docs/
 
 # Docker
 Dockerfile
-docker-compose.yml
+docker-compose.yaml
 .dockerignore
 
 # Monitoring
