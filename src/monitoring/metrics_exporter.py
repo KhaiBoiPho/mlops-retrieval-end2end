@@ -4,10 +4,11 @@ Push metrics to Prometheus Pushgateway
 """
 import os
 import time
-# import requests
+import requests
 # from typing import Dict, Any, Optional
-from prometheus_client import CollectorRegistry, Gauge, Counter, Histogram, push_to_gateway
+from prometheus_client import CollectorRegistry, Gauge, Counter, Histogram, push_to_gateway, exposition
 from functools import wraps
+
 
 # Pushgateway URL
 PUSHGATEWAY_URL = os.getenv('PUSHGATEWAY_URL', 'localhost:9091')
@@ -106,20 +107,49 @@ cost_per_1k = Gauge(
 class MetricsExporter:
     """Export metrics to Prometheus Pushgateway"""
     
-    def __init__(self, endpoint_name: str, pushgateway_url: str = PUSHGATEWAY_URL):
+    def __init__(self, endpoint_name: str, pushgateway_url: str = None):
         self.endpoint_name = endpoint_name
-        self.pushgateway_url = pushgateway_url
+        self.pushgateway_url = pushgateway_url or os.getenv('PUSHGATEWAY_URL', 'localhost:9091')
         self.is_cold_start = True
+        
+        # Normalize URL
+        if not self.pushgateway_url.startswith('http'):
+            if 'ngrok' in self.pushgateway_url:
+                self.pushgateway_url = f'https://{self.pushgateway_url}'
+            else:
+                self.pushgateway_url = f'http://{self.pushgateway_url}'
     
     def push_metrics(self):
         """Push metrics to Pushgateway"""
         try:
-            push_to_gateway(
-                self.pushgateway_url,
-                job=f'{self.endpoint_name}-metrics',
-                registry=registry
-            )
+            # Check if ngrok
+            if 'ngrok' in self.pushgateway_url:
+                # Use requests with custom header for ngrok
+                output = exposition.generate_latest(registry)
+                push_url = f"{self.pushgateway_url}/metrics/job/{self.endpoint_name}-metrics"
+                
+                response = requests.post(
+                    push_url,
+                    data=output,
+                    headers={
+                        'Content-Type': exposition.CONTENT_TYPE_LATEST,
+                        'ngrok-skip-browser-warning': 'true'
+                    },
+                    timeout=10
+                )
+                
+                if response.status_code not in [200, 202]:
+                    print(f"Warning: Pushgateway returned {response.status_code}")
+            else:
+                # Normal push
+                push_to_gateway(
+                    self.pushgateway_url,
+                    job=f'{self.endpoint_name}-metrics',
+                    registry=registry,
+                    timeout=10
+                )
         except Exception as e:
+            # Don't fail requests if metrics push fails
             print(f"Failed to push metrics: {e}")
     
     def track_request(self, action: str, status: str, duration: float):
