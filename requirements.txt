@@ -38,5 +38,6 @@ python-dateutil==2.8.2
 ensure==1.0.2
 
 # Add pyvi
-pyvi==0.1.1prometheus_client>=0.19.0
+pyvi==0.1.1
+prometheus_client>=0.19.0
 flask>=3.0.0
