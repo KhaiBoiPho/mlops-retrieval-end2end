@@ -216,6 +216,40 @@ s3://mlops-retrieval-models/
 └── cross-encoder/{mlflow_run_id}/
 ```
 
+<p align="center">
+
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="images/Screenshot from 2026-01-15 11-13-51.png" width="600">
+    </td>
+    <td align="center">
+      <img src="images/Screenshot from 2026-01-15 11-14-01.png" width="600">
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="images/Screenshot from 2026-01-15 11-14-13.png" width="600">
+    </td>
+    <td align="center">
+      <img src="images/Screenshot from 2026-01-15 11-14-29.png" width="600">
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="images/Screenshot from 2026-01-15 11-14-43.png" width="600">
+    </td>
+    <td align="center">
+      <img src="images/Screenshot from 2026-01-15 11-15-31.png" width="600">
+    </td>
+  </tr>
+</table>
+
+<p align="center">
+  <i>Logical organization of datasets, models, artifacts, and metadata in AWS S3</i>
+</p>
+
+
 ### Telegram Notifications
 
 After training completion, sends summary with:
