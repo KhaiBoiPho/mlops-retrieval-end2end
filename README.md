@@ -144,6 +144,17 @@ mlops-retrieval-end2end/
 
 All transformations are versioned with DVC and stored on S3.
 
+<p align="center">
+
+<p align="center">
+  <img src="images/Screenshot from 2026-01-15 11-23-16.png" width="900">
+</p>
+
+<p align="center">
+  <i>Tracking data, pipelines, and model artifacts across training stages using DVC</i>
+</p>
+
+
 ## 🚂 Training Pipeline
 
 ### Airflow DAG Flow
@@ -424,7 +435,7 @@ python >= 3.9, docker, aws-cli, dvc, airflow
 
 ### Installation
 ```bash
-git clone <repo>
+git clone https://github.com/KhaiBoiPho/mlops-retrieval-end2end
 cd mlops-retrieval-end2end
 pip install -r requirements.txt
 aws configure
@@ -486,12 +497,15 @@ grafana-server &
 
 ## 📝 License
 
-MIT License
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ## 📧 Contact
 
-For questions or issues, open a GitHub issue or contact via Telegram.
+For questions, issues, or collaboration:
+- Telegram: @khai0601  
+- Zalo: 0976504711  
+- Email: nguyenquangk981@gmail.com  
+
+Please open a GitHub issue for bug reports or feature requests.
 
 ---
-
-**Built for Vietnamese Legal Document Retrieval**
