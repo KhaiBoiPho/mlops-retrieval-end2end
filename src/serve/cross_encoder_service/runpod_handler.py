@@ -7,12 +7,12 @@ import runpod
 import os
 import time
 from typing import Dict, Any
-from pathlib import Path
+# from pathlib import Path
 
 from src.serve.cross_encoder_service.model_loader import CrossEncoderModelLoader
 from src.serve.cross_encoder_service.reranker import CrossEncoderReranker
 from src.common.configuration import ConfigurationManager
-from src.entity.config_entity import CrossEncoderServeConfig
+# from src.entity.config_entity import CrossEncoderServeConfig
 from src.common.logging_config import get_logger
 from src.monitoring.metrics_exporter import MetricsExporter
 
@@ -40,25 +40,7 @@ def load_model():
     try:
         # Load configuration
         config_manager = ConfigurationManager()
-        raw_config = config_manager.cross_encoder_serve_config
-        
-        # Parse to CrossEncoderServeConfig
-        config = CrossEncoderServeConfig(
-            s3_bucket=str(raw_config.model.s3_bucket),
-            model_id=str(raw_config.model.model_id),
-            model_type=str(raw_config.model.model_type),
-            local_path=Path(raw_config.model.local_path),
-            host=str(raw_config.server.host),
-            port=int(raw_config.server.port),
-            workers=int(raw_config.server.workers),
-            reload=bool(raw_config.server.reload),
-            batch_size=int(raw_config.inference.batch_size),
-            max_seq_length=int(raw_config.inference.max_seq_length),
-            device=str(raw_config.inference.device),
-            cache_enable=bool(raw_config.get('cache', {}).get('enable', False)),
-            cache_ttl=int(raw_config.get('cache', {}).get('ttl', 3600)),
-            cache_max_size=int(raw_config.get('cache', {}).get('max_size', 10000))
-        )
+        config = config_manager.get_cross_encoder_serve_config()
         
         # Override with env vars if provided
         if os.getenv("S3_BUCKET"):
