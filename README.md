@@ -159,6 +159,11 @@ train_cross_encoder → eval_cross_encoder → save_cross_encoder
     ↓
 notify_telegram
 ```
+<p align="center">
+    <p align="center">
+      <img src="images/Screenshot from 2026-01-14 00-56-08.png" width="900">
+    </p>
+<p align="center"><i>End-to-end training pipeline orchestrated by Airflow DAGs</i></p>
 
 ### Bi-Encoder Training
 
