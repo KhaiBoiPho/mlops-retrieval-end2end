@@ -159,11 +159,21 @@ train_cross_encoder → eval_cross_encoder → save_cross_encoder
     ↓
 notify_telegram
 ```
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="images/Screenshot from 2026-01-14 00-56-08.png" width="700">
+    </td>
+    <td align="center">
+      <img src="images/download.jpeg" width="180">
+    </td>
+  </tr>
+</table>
+
 <p align="center">
-    <p align="center">
-      <img src="images/Screenshot from 2026-01-14 00-56-08.png" width="900">
-    </p>
-<p align="center"><i>End-to-end training pipeline orchestrated by Airflow DAGs</i></p>
+  <i>End-to-end training pipeline orchestrated by Airflow DAGs</i>
+</p>
+
 
 ### Bi-Encoder Training
 
@@ -179,7 +189,7 @@ Uses trained bi-encoder to generate challenging negative samples for cross-encod
 
 ### Cross-Encoder Training
 
-- **Base Model**: PhoRanker
+- **Base Model**: `itdainb/PhoRanker`
 - **Loss**: Binary Cross-Entropy (custom PyTorch)
 - **Evaluation Metrics**: Precision@k, Reranking Accuracy, MRR Improvement, RRD, nDCG Improvement
 - **Output**: Same structure as bi-encoder
@@ -190,6 +200,12 @@ Uses trained bi-encoder to generate challenging negative samples for cross-encod
 - Registers models with unique run IDs
 - Version tagging (staging/production)
 - Used for model retrieval during deployment
+
+<p align="center">
+    <p align="center">
+      <img src="images/Screenshot from 2026-01-14 00-58-10.png" width="900">
+    </p>
+<p align="center"><i>MLflow Training Metrics & Artifacts</i></p>
 
 ### Model Storage
 
@@ -234,6 +250,40 @@ Each service exposes:
 - `/infer` - Inference endpoint
 - `/metrics` - Prometheus metrics
 
+<p align="center">
+
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="images/Screenshot from 2026-01-14 00-33-26.png" width="600">
+    </td>
+    <td align="center">
+      <img src="images/Screenshot from 2026-01-14 00-33-12.png" width="600">
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="images/Screenshot from 2026-01-14 00-42-52.png" width="600">
+    </td>
+    <td align="center">
+      <img src="images/Screenshot from 2026-01-14 00-43-13.png" width="600">
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="images/Screenshot from 2026-01-14 00-44-39.png" width="600">
+    </td>
+    <td align="center">
+      <img src="images/Screenshot from 2026-01-14 00-44-52.png" width="600">
+    </td>
+  </tr>
+</table>
+
+<p align="center">
+  <i>RunPod serverless inference endpoints for bi-encoder and cross-encoder models</i>
+</p>
+
+
 ## 📈 Monitoring System
 
 ### Four Pillars of ML Observability
@@ -265,6 +315,34 @@ Service (instrumented) → /metrics endpoint → Ngrok (public)
     → Prometheus (scrape + rules) → Grafana (dashboards)
     → Alertmanager → Telegram
 ```
+
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="images/Screenshot from 2026-01-14 00-35-51.png" width="380"><br/>
+      <b>Prometheus</b>
+    </td>
+    <td align="center">
+      <img src="images/Screenshot from 2026-01-14 00-36-12.png" width="380"><br/>
+      <b>Grafana</b>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="images/Screenshot from 2026-01-14 00-36-40.png" width="380"><br/>
+      <b>Pushgateway</b>
+    </td>
+    <td align="center">
+      <img src="images/Screenshot from 2026-01-14 00-35-27.png" width="380"><br/>
+      <b>Alertmanager</b>
+    </td>
+  </tr>
+</table>
+
+<p align="center">
+  <i>Core monitoring components for metrics collection, visualization, and alerting</i>
+</p>
+
 
 Logs collected via Promtail → Loki → displayed in Grafana alongside metrics.
 
