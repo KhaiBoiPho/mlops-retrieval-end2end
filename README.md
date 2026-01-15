@@ -25,6 +25,17 @@ Prometheus ← Service Metrics → Grafana Dashboards → Alertmanager → Teleg
 Loki Logs ← Promtail
 ```
 
+<p align="center">
+
+<p align="center">
+  <img src="images/diagram-export-1-15-2026-11_45_32-AM.png" width="1000">
+</p>
+
+<p align="center">
+  <i>Overall architecture of the MLOps pipeline covering data management, training, deployment, and monitoring</i>
+</p>
+
+
 ## 📁 Project Structure
 
 ```
@@ -185,6 +196,17 @@ notify_telegram
   <i>End-to-end training pipeline orchestrated by Airflow DAGs</i>
 </p>
 
+<p align="center">
+
+<p align="center">
+  <img src="images/diagram-export-1-15-2026-11_47_23-AM.png" width="900">
+</p>
+
+<p align="center">
+  <i>End-to-end model training workflow orchestrated by Airflow and tracked with DVC and MLflow</i>
+</p>
+
+
 
 ### Bi-Encoder Training
 
@@ -278,6 +300,17 @@ After training completion, sends summary with:
 - Auto-scale to zero when idle
 - Pay-per-second billing
 - Cost-efficient for variable traffic
+
+<p align="center">
+
+<p align="center">
+  <img src="images/diagram-export-1-15-2026-11_51_25-AM.png" width="900">
+</p>
+
+<p align="center">
+  <i>Production deployment architecture for bi-encoder and cross-encoder models on serverless inference endpoints</i>
+</p>
+
 
 ### Deployment Process
 
@@ -397,6 +430,17 @@ Logs collected via Promtail → Loki → displayed in Grafana alongside metrics.
 2. **Bi-Encoder Dashboard**: Success rate, latency P95, cold starts, embedding drift, cost
 3. **Cross-Encoder Dashboard**: Reranking latency, score distribution, drift detection
 
+<p align="center">
+
+<p align="center">
+  <img src="images/diagram-export-1-15-2026-11_53_53-AM.png" width="900">
+</p>
+
+<p align="center">
+  <i>Metrics, logs, dashboards, and alerting architecture for monitoring deployed ML services</i>
+</p>
+
+
 ### Alerting
 
 Prometheus evaluates rules and triggers alerts for:
@@ -425,6 +469,17 @@ Alerts sent to Telegram with dashboard links and actionable context.
 - **Rollback**: Revert to previous version stored in config
 
 All scripts in `ci/` and `cd/` directories.
+
+<p align="center">
+
+<p align="center">
+  <img src="images/diagram-export-1-15-2026-11_55_31-AM.png" width="900">
+</p>
+
+<p align="center">
+  <i>Continuous integration and deployment pipeline for model training, validation, and production rollout</i>
+</p>
+
 
 ## 🚀 Quick Start
 
